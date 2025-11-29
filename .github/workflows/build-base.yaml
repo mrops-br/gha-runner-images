@@ -1,0 +1,109 @@
+name: Build Base Image
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/**'
+      - 'hotfix/**'
+    paths:
+      - 'images/base/**'
+      - '.github/workflows/build-base.yaml'
+      - '.github/actions/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'images/base/**'
+      - '.github/workflows/build-base.yaml'
+      - '.github/actions/**'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build even without changes'
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    outputs:
+      digest:
+        description: 'Image digest'
+        value: ${{ jobs.build.outputs.digest }}
+      tags:
+        description: 'Image tags'
+        value: ${{ jobs.build.outputs.tags }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/runner-base
+
+jobs:
+  lint:
+    name: Lint Dockerfile
+    runs-on: ubuntu-latest  # Keep on GitHub-hosted to avoid circular dependency
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint Dockerfile
+        uses: ./.github/actions/lint-dockerfile
+        with:
+          dockerfile: images/base/Dockerfile
+          failure-threshold: warning
+
+  build:
+    name: Build and Push
+    runs-on: [self-hosted, shared-runners]
+    needs: lint
+    permissions:
+      contents: read
+      packages: write
+      id-token: write  # For cosign signing
+      security-events: write  # For uploading SARIF results
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine if push is needed
+        id: should-push
+        run: |
+          # Push on main, develop, release/*, hotfix/* branches (not PRs)
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "push=false" >> $GITHUB_OUTPUT
+          else
+            echo "push=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push Docker image
+        id: build
+        uses: ./.github/actions/docker-build-push
+        with:
+          context: images/base
+          dockerfile: images/base/Dockerfile
+          registry: ${{ env.REGISTRY }}
+          image-name: ${{ env.IMAGE_NAME }}
+          push: ${{ steps.should-push.outputs.push }}
+          platforms: linux/amd64
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sign image
+        if: steps.should-push.outputs.push == 'true'
+        uses: ./.github/actions/sign-image
+        with:
+          image-digest: ${{ steps.build.outputs.digest }}
+          image-tags: ${{ steps.build.outputs.tags }}
+
+      - name: Scan image for vulnerabilities
+        if: steps.should-push.outputs.push == 'true'
+        uses: ./.github/actions/scan-image
+        with:
+          image-ref: ${{ steps.build.outputs.image-ref }}
+          severity: 'CRITICAL,HIGH'
+
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      tags: ${{ steps.build.outputs.tags }}

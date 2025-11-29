@@ -1,0 +1,103 @@
+name: Build All Images
+
+on:
+  # Trigger on release creation
+  release:
+    types: [published]
+  # Trigger on push to main or develop
+  push:
+    branches:
+      - main
+      - develop
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag for all images (e.g., v1.0.0)'
+        required: false
+        type: string
+      base_image_tag:
+        description: 'Base image tag to use for dependent images'
+        required: false
+        default: 'latest'
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-base:
+    name: Build Base Image
+    uses: ./.github/workflows/build-base.yaml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      security-events: write
+    secrets: inherit
+
+  build-docker:
+    name: Build Docker Image
+    needs: build-base
+    uses: ./.github/workflows/build-docker.yaml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      security-events: write
+    secrets: inherit
+    with:
+      base_image_tag: ${{ inputs.base_image_tag || github.sha }}
+
+  # Add more image builds here as you create them
+  # build-nodejs:
+  #   name: Build Node.js Image
+  #   needs: build-base
+  #   uses: ./.github/workflows/build-nodejs.yaml
+  #   permissions:
+  #     contents: read
+  #     packages: write
+  #     id-token: write
+  #     security-events: write
+  #   secrets: inherit
+  #   with:
+  #     base_image_tag: ${{ inputs.base_image_tag || github.sha }}
+
+  summary:
+    name: Build Summary
+    runs-on: [self-hosted, shared-runners]
+    needs: [build-base, build-docker]
+    if: always()
+    steps:
+      - name: Check build results
+        id: check
+        run: |
+          base_result="${{ needs.build-base.result }}"
+          docker_result="${{ needs.build-docker.result }}"
+
+          if [[ "$base_result" == "failure" ]] || [[ "$docker_result" == "failure" ]]; then
+            echo "has_failure=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_failure=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow:** ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| runner-base | ${{ needs.build-base.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| runner-docker | ${{ needs.build-docker.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ steps.check.outputs.has_failure }}" == "true" ]]; then
+            echo ":x: Some builds failed. Please check the logs above." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo ":white_check_mark: All builds completed successfully!" >> $GITHUB_STEP_SUMMARY
+          fi
