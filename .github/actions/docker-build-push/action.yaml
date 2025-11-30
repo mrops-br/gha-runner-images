@@ -69,18 +69,16 @@ runs:
       with:
         images: ${{ inputs.registry }}/${{ inputs.image-name }}
         tags: |
-          # Set latest tag for default branch
-          type=raw,value=latest,enable={{is_default_branch}}
-          # Git short SHA
+          # develop → dev-latest, dev-<sha>
+          type=raw,value=dev-latest,enable=${{ github.ref == 'refs/heads/develop' }}
+          type=raw,value=dev-{{sha}},enable=${{ github.ref == 'refs/heads/develop' }}
+          # release/X.Y.Z → X.Y.Z-rc, <sha>
+          type=match,pattern=release/(.*),group=1,suffix=-rc
           type=sha,prefix=,format=short
-          # Git tag (semantic version)
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=semver,pattern={{major}}
-          # Branch name
-          type=ref,event=branch
-          # PR number
-          type=ref,event=pr
+          # hotfix/X.Y.Z → X.Y.Z-hotfix-rc, <sha>
+          type=match,pattern=hotfix/(.*),group=1,suffix=-hotfix-rc
+          # PR builds → pr-<number>
+          type=ref,event=pr,prefix=pr-
 
     - name: Build and push
       id: build
