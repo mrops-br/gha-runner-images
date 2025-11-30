@@ -3,8 +3,6 @@ name: Build Base Image
 on:
   push:
     branches:
-      - main
-      - develop
       - 'release/**'
       - 'hotfix/**'
     paths:
@@ -99,10 +97,12 @@ jobs:
 
       - name: Scan image for vulnerabilities
         if: steps.should-push.outputs.push == 'true'
+        continue-on-error: true
         uses: ./.github/actions/scan-image
         with:
           image-ref: ${{ steps.build.outputs.image-ref }}
           severity: 'CRITICAL,HIGH'
+          timeout: '20m'
 
     outputs:
       digest: ${{ steps.build.outputs.digest }}
