@@ -21,6 +21,10 @@ inputs:
     description: 'Whether to upload SARIF results to GitHub Security'
     required: false
     default: 'true'
+  timeout:
+    description: 'Scan timeout (e.g., 10m, 30m)'
+    required: false
+    default: '15m'
 
 runs:
   using: composite
@@ -32,6 +36,10 @@ runs:
         format: ${{ inputs.format }}
         output: ${{ inputs.output }}
         severity: ${{ inputs.severity }}
+        timeout: ${{ inputs.timeout }}
+        scanners: 'vuln'
+        skip-dirs: '/var/lib/apt/lists,/var/cache/apt'
+        skip-files: '/usr/share/**,/usr/lib/locale/**'
 
     - name: Upload Trivy scan results to GitHub Security
       if: inputs.upload-sarif == 'true' && inputs.format == 'sarif'

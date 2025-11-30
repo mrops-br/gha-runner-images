@@ -7,6 +7,9 @@ LABEL org.opencontainers.image.source="https://github.com/YOUR_ORG/github-action
 LABEL org.opencontainers.image.description="Base image for GitHub Actions pipelines"
 LABEL org.opencontainers.image.licenses="MIT"
 
+# Set shell with pipefail for safer RUN commands
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -15,6 +18,7 @@ ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
 # Install base packages
+# hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Essential tools
     ca-certificates \

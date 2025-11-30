@@ -48,16 +48,6 @@ jobs:
           driver: remote
           endpoint: tcp://buildkitd.github-systems.svc.cluster.local:1234
 
-      - name: Test buildkitd connection
-        run: |
-          echo "Installing BuildKit..."
-          curl -L https://github.com/moby/buildkit/releases/download/v0.13.2/buildkit-v0.13.2.linux-amd64.tar.gz \
-            | tar -xz --strip-components=1 -C "$HOME/bin"
-          echo "$HOME/bin" >> $GITHUB_PATH
-          export PATH="$HOME/bin:$PATH"
-          echo "Testing BuildKit..."
-          buildctl --addr tcp://buildkitd.github-systems.svc.cluster.local:1234 debug workers
-
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -65,7 +55,6 @@ jobs:
           file: Dockerfile.test
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.TEST_IMAGE }}:test
-
 
       - name: Cleanup
         if: always()

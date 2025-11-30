@@ -16,11 +16,6 @@ on:
         description: 'Version tag for all images (e.g., v1.0.0)'
         required: false
         type: string
-      base_image_tag:
-        description: 'Base image tag to use for dependent images'
-        required: false
-        default: 'latest'
-        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -35,19 +30,6 @@ jobs:
       id-token: write
       security-events: write
     secrets: inherit
-
-  build-docker:
-    name: Build Docker Image
-    needs: build-base
-    uses: ./.github/workflows/build-docker.yaml
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      security-events: write
-    secrets: inherit
-    with:
-      base_image_tag: ${{ inputs.base_image_tag || github.sha }}
 
   # Add more image builds here as you create them
   # build-nodejs:
@@ -65,17 +47,16 @@ jobs:
 
   summary:
     name: Build Summary
-    runs-on: [self-hosted, shared-runners]
-    needs: [build-base, build-docker]
+    runs-on: [shared-runners]
+    needs: [build-base]
     if: always()
     steps:
       - name: Check build results
         id: check
         run: |
           base_result="${{ needs.build-base.result }}"
-          docker_result="${{ needs.build-docker.result }}"
 
-          if [[ "$base_result" == "failure" ]] || [[ "$docker_result" == "failure" ]]; then
+          if [[ "$base_result" == "failure" ]]; then
             echo "has_failure=true" >> $GITHUB_OUTPUT
           else
             echo "has_failure=false" >> $GITHUB_OUTPUT
@@ -92,12 +73,11 @@ jobs:
           echo "| Image | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| runner-base | ${{ needs.build-base.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| runner-docker | ${{ needs.build-docker.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [[ "${{ steps.check.outputs.has_failure }}" == "true" ]]; then
-            echo ":x: Some builds failed. Please check the logs above." >> $GITHUB_STEP_SUMMARY
+            echo ":x: Build failed. Please check the logs above." >> $GITHUB_STEP_SUMMARY
             exit 1
           else
-            echo ":white_check_mark: All builds completed successfully!" >> $GITHUB_STEP_SUMMARY
+            echo ":white_check_mark: Build completed successfully!" >> $GITHUB_STEP_SUMMARY
           fi
