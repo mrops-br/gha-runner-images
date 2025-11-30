@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest  # Keep on GitHub-hosted to avoid circular dependency
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Lint Dockerfile
         uses: ./.github/actions/lint-dockerfile
@@ -79,7 +79,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Determine if push is needed
         id: should-push
