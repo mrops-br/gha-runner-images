@@ -1,0 +1,82 @@
+name: Retag Container Image
+description: Retag an existing container image without rebuilding (for promoting RC images to final versions)
+
+inputs:
+  registry:
+    description: 'Container registry'
+    required: true
+  image-name:
+    description: 'Image name (without registry prefix)'
+    required: true
+  source-tag:
+    description: 'Source tag to copy from (e.g., 1.0.0-rc)'
+    required: true
+  target-tags:
+    description: 'Target tags to create (multiline, e.g., 1.0.0, latest)'
+    required: true
+  registry-username:
+    description: 'Registry username'
+    required: false
+    default: ''
+  registry-password:
+    description: 'Registry password or token'
+    required: false
+    default: ''
+
+outputs:
+  image-ref:
+    description: 'Full image reference with digest'
+    value: ${{ steps.crane-tag.outputs.image-ref }}
+
+runs:
+  using: composite
+  steps:
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ inputs.registry-username }}
+        password: ${{ inputs.registry-password }}
+
+    - name: Install crane
+      shell: bash
+      run: |
+        if ! command -v crane &> /dev/null; then
+          echo "Installing crane..."
+          curl -sL "https://github.com/google/go-containerregistry/releases/latest/download/go-containerregistry_Linux_x86_64.tar.gz" | tar -xz -C /tmp
+          sudo mv /tmp/crane /usr/local/bin/
+        fi
+        crane version
+
+    - name: Retag image
+      id: crane-tag
+      shell: bash
+      run: |
+        SOURCE_IMAGE="${{ inputs.registry }}/${{ inputs.image-name }}:${{ inputs.source-tag }}"
+
+        echo "Checking if source image exists: $SOURCE_IMAGE"
+        if ! crane manifest "$SOURCE_IMAGE" &> /dev/null; then
+          echo "❌ Source image not found: $SOURCE_IMAGE"
+          echo "Available tags:"
+          crane ls "${{ inputs.registry }}/${{ inputs.image-name }}" || true
+          exit 1
+        fi
+
+        # Get digest of source image
+        DIGEST=$(crane digest "$SOURCE_IMAGE")
+        echo "Source image digest: $DIGEST"
+        echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+        echo "image-ref=${{ inputs.registry }}/${{ inputs.image-name }}@$DIGEST" >> $GITHUB_OUTPUT
+
+        # Retag to each target tag
+        while IFS= read -r target_tag; do
+          # Skip empty lines
+          [[ -z "$target_tag" ]] && continue
+
+          TARGET_IMAGE="${{ inputs.registry }}/${{ inputs.image-name }}:$target_tag"
+          echo "Retagging to: $TARGET_IMAGE"
+          crane tag "$SOURCE_IMAGE" "$target_tag"
+          echo "✅ Successfully tagged: $target_tag"
+        done <<< "${{ inputs.target-tags }}"
+
+        echo "🎉 Retagging complete!"
