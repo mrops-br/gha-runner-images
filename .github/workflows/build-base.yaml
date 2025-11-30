@@ -3,6 +3,8 @@ name: Build Base Image
 on:
   push:
     branches:
+      - main
+      - develop
       - 'release/**'
       - 'hotfix/**'
     paths:
