@@ -1,0 +1,20 @@
+name: Lint Dockerfile
+description: Lint a Dockerfile using hadolint
+
+inputs:
+  dockerfile:
+    description: 'Path to the Dockerfile'
+    required: true
+  failure-threshold:
+    description: 'Failure threshold for hadolint (error, warning, info, style, ignore, none)'
+    required: false
+    default: 'warning'
+
+runs:
+  using: composite
+  steps:
+    - name: Lint Dockerfile with hadolint
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: ${{ inputs.dockerfile }}
+        failure-threshold: ${{ inputs.failure-threshold }}
