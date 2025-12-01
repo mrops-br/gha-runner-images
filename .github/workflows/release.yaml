@@ -108,6 +108,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
+      security-events: write
     secrets: inherit
     with:
       mode: retag
