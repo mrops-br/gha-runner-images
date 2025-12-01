@@ -178,7 +178,7 @@ jobs:
   summary:
     name: Summary
     runs-on: ubuntu-latest
-    needs: [update-changelog, retag-base, create-git-tag, merge-to-develop]
+    needs: [extract-version, update-changelog, retag-base, create-git-tag, merge-to-develop]
     if: always() && github.event_name == 'push'
     steps:
       - name: Generate summary
@@ -207,9 +207,25 @@ jobs:
             echo "- 📝 CHANGELOG.md updated" >> $GITHUB_STEP_SUMMARY
             echo "- 🏷️ Git tag: \`v${VERSION}\`" >> $GITHUB_STEP_SUMMARY
             echo "- 🔀 Merged back to develop" >> $GITHUB_STEP_SUMMARY
-            echo "- 🐳 Images retagged:" >> $GITHUB_STEP_SUMMARY
-            echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:${VERSION}\`" >> $GITHUB_STEP_SUMMARY
-            echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:latest\`" >> $GITHUB_STEP_SUMMARY
+
+            # Extract image name from env.IMAGE_NAME (e.g., "mrops-br/runner-base" -> "runner-base")
+            IMAGE_NAME="runner-base"
+            PACKAGE_URL="https://github.com/${{ github.repository }}/pkgs/container/${IMAGE_NAME}"
+
+            echo "- 🐳 Images retagged (with semver): [📦 View Package](${PACKAGE_URL})" >> $GITHUB_STEP_SUMMARY
+
+            # Parse semver for display
+            if [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              MAJOR="${BASH_REMATCH[1]}"
+              MINOR="${MAJOR}.${BASH_REMATCH[2]}"
+              echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+              echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:${MINOR}\`" >> $GITHUB_STEP_SUMMARY
+              echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:${MAJOR}\`" >> $GITHUB_STEP_SUMMARY
+              echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:latest\`" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+              echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:latest\`" >> $GITHUB_STEP_SUMMARY
+            fi
           else
             echo "❌ Release failed. Please check the logs above." >> $GITHUB_STEP_SUMMARY
             exit 1
