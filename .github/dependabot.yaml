@@ -21,14 +21,3 @@ updates:
     labels:
       - "dependencies"
       - "docker"
-
-  # Docker - Docker image
-  - package-ecosystem: "docker"
-    directory: "/images/docker"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "docker"
-    labels:
-      - "dependencies"
-      - "docker"
