@@ -5,19 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2025-12-01
+
+### 🚜 Changed
+- Update CHANGELOG.md for v0.2.5 by @github-actions[bot]
+### 💼 Other
+- Merge pull request #20 from mrops-br/hotfix/0.2.6
+### 🐛 Fixed
+- Fix release summary job
+### New Contributors
+* @github-actions[bot] made their first contribution
+
 ## [0.2.5] - 2025-12-01
 
 ### 🚜 Changed
-- Update CHANGELOG.md for v0.2.4
+- Update CHANGELOG.md for v0.2.4 by @github-actions[bot]
 ### ⚙️ Miscellaneous
-- Merge main at develop after finishing release by @melquiadesrodrigues- Improve flow to build and push rc images- Improve tagging on releases and hotfixes
+- Merge main at develop after finishing release by @melquiadesrodrigues- Improve flow to build and push rc images by @melquiadesrodrigues- Improve tagging on releases and hotfixes by @melquiadesrodrigues
 ### 💼 Other
-- Merge branch 'main' into develop by @melquiadesrodrigues- Merge pull request #18 from mrops-br/release/0.2.4- Merge pull request #19 from mrops-br/hotfix/0.2.5
+- Merge branch 'main' into develop by @melquiadesrodrigues- Merge pull request #18 from mrops-br/release/0.2.4 by @melquiadesrodrigues- Merge pull request #19 from mrops-br/hotfix/0.2.5 by @melquiadesrodrigues
 ### 🐛 Fixed
-- Fix build sign final image by @melquiadesrodrigues- Fix sign image on retag job
-### New Contributors
-* @melquiadesrodrigues made their first contribution
-
+- Fix build sign final image by @melquiadesrodrigues- Fix sign image on retag job by @melquiadesrodrigues
 ## [0.2.3] - 2025-12-01
 
 ### 🚀 Added
@@ -55,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * @melquiadesrodrigues made their first contribution
 * @dependabot[bot] made their first contribution
 
+[0.2.6]: https://github.com/mrops-br/gha-runner-images/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/mrops-br/gha-runner-images/compare/v0.2.3...v0.2.5
 [0.2.3]: https://github.com/mrops-br/gha-runner-images/compare/v0.1.0...v0.2.3
 
