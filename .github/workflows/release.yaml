@@ -1,4 +1,4 @@
-name: Build All Images
+name: Release
 
 on:
   # Trigger on push to main (retag only, no rebuild)
@@ -60,6 +60,45 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "source_tag=$SOURCE_TAG" >> $GITHUB_OUTPUT
 
+  update-changelog:
+    name: Update Changelog
+    runs-on: ubuntu-latest
+    needs: extract-version
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Need full history for git-cliff
+
+      - name: Generate changelog with git-cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --verbose --tag v${{ needs.extract-version.outputs.version }}
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit and push changelog
+        run: |
+          VERSION="${{ needs.extract-version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add CHANGELOG.md
+
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "ℹ️ No changes to CHANGELOG.md"
+          else
+            git commit -m "docs: update CHANGELOG.md for v${VERSION}"
+            git push origin main
+            echo "✅ Updated CHANGELOG.md for v${VERSION}"
+          fi
+
   retag-base:
     name: Retag Base Image
     needs: extract-version
@@ -113,7 +152,7 @@ jobs:
   summary:
     name: Summary
     runs-on: ubuntu-latest
-    needs: [retag-base, create-git-tag]
+    needs: [update-changelog, retag-base, create-git-tag]
     if: always() && github.event_name == 'push'
     steps:
       - name: Generate summary
@@ -127,17 +166,22 @@ jobs:
           echo "**Source Tag:** $SOURCE_TAG" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Image | Retag Status | Git Tag Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------------|----------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| runner-base | ${{ needs.retag-base.result }} | ${{ needs.create-git-tag.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Task | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Changelog Update | ${{ needs.update-changelog.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Retag runner-base | ${{ needs.retag-base.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Create Git Tag | ${{ needs.create-git-tag.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [[ "${{ needs.retag-base.result }}" == "success" && "${{ needs.create-git-tag.result }}" == "success" ]]; then
+          if [[ "${{ needs.update-changelog.result }}" == "success" && "${{ needs.retag-base.result }}" == "success" && "${{ needs.create-git-tag.result }}" == "success" ]]; then
             echo "✅ Release v${VERSION} completed successfully!" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Images retagged:" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:${VERSION}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "### Released Artifacts:" >> $GITHUB_STEP_SUMMARY
+            echo "- 📝 CHANGELOG.md updated" >> $GITHUB_STEP_SUMMARY
+            echo "- 🏷️ Git tag: \`v${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- 🐳 Images retagged:" >> $GITHUB_STEP_SUMMARY
+            echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+            echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:latest\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ Release failed. Please check the logs above." >> $GITHUB_STEP_SUMMARY
             exit 1
