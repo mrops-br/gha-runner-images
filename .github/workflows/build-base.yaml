@@ -143,6 +143,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write  # For cosign keyless signing
 
     steps:
       - name: Checkout
