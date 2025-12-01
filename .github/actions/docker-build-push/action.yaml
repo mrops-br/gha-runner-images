@@ -63,20 +63,34 @@ runs:
         username: ${{ inputs.registry-username }}
         password: ${{ inputs.registry-password }}
 
+    - name: Extract version from branch
+      id: version
+      shell: bash
+      run: |
+        REF="${{ github.ref }}"
+        if [[ "$REF" =~ refs/heads/release/(.+) ]]; then
+          echo "tag=${BASH_REMATCH[1]}-rc" >> $GITHUB_OUTPUT
+        elif [[ "$REF" =~ refs/heads/hotfix/(.+) ]]; then
+          echo "tag=${BASH_REMATCH[1]}-hotfix-rc" >> $GITHUB_OUTPUT
+        else
+          echo "tag=" >> $GITHUB_OUTPUT
+        fi
+
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
         images: ${{ inputs.registry }}/${{ inputs.image-name }}
+        flavor: |
+          latest=false
         tags: |
           # develop → dev-latest, dev-<sha>
           type=raw,value=dev-latest,enable=${{ github.ref == 'refs/heads/develop' }}
           type=raw,value=dev-{{sha}},enable=${{ github.ref == 'refs/heads/develop' }}
-          # release/X.Y.Z → X.Y.Z-rc, <sha>
-          type=match,pattern=release/(.*),group=1,suffix=-rc
+          # release/X.Y.Z → X.Y.Z-rc or hotfix/X.Y.Z → X.Y.Z-hotfix-rc
+          type=raw,value=${{ steps.version.outputs.tag }},enable=${{ steps.version.outputs.tag != '' }}
+          # Always add short SHA for all branches
           type=sha,prefix=,format=short
-          # hotfix/X.Y.Z → X.Y.Z-hotfix-rc, <sha>
-          type=match,pattern=hotfix/(.*),group=1,suffix=-hotfix-rc
           # PR builds → pr-<number>
           type=ref,event=pr,prefix=pr-
 
