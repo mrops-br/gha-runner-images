@@ -150,10 +150,35 @@ jobs:
           git push origin "v${VERSION}"
           echo "✅ Created and pushed tag: v${VERSION}"
 
+  merge-to-develop:
+    name: Merge main to develop
+    runs-on: ubuntu-latest
+    needs: [extract-version, update-changelog, retag-base, create-git-tag]
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Merge main into develop
+        run: |
+          VERSION="${{ needs.extract-version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          echo "Merging main into develop..."
+          git merge origin/main -m "chore: merge main into develop after release v${VERSION}"
+          git push origin develop
+          echo "✅ Successfully merged main into develop"
+
   summary:
     name: Summary
     runs-on: ubuntu-latest
-    needs: [update-changelog, retag-base, create-git-tag]
+    needs: [update-changelog, retag-base, create-git-tag, merge-to-develop]
     if: always() && github.event_name == 'push'
     steps:
       - name: Generate summary
@@ -172,14 +197,16 @@ jobs:
           echo "| Changelog Update | ${{ needs.update-changelog.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Retag runner-base | ${{ needs.retag-base.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Create Git Tag | ${{ needs.create-git-tag.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Merge to develop | ${{ needs.merge-to-develop.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [[ "${{ needs.update-changelog.result }}" == "success" && "${{ needs.retag-base.result }}" == "success" && "${{ needs.create-git-tag.result }}" == "success" ]]; then
+          if [[ "${{ needs.update-changelog.result }}" == "success" && "${{ needs.retag-base.result }}" == "success" && "${{ needs.create-git-tag.result }}" == "success" && "${{ needs.merge-to-develop.result }}" == "success" ]]; then
             echo "✅ Release v${VERSION} completed successfully!" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Released Artifacts:" >> $GITHUB_STEP_SUMMARY
             echo "- 📝 CHANGELOG.md updated" >> $GITHUB_STEP_SUMMARY
             echo "- 🏷️ Git tag: \`v${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- 🔀 Merged back to develop" >> $GITHUB_STEP_SUMMARY
             echo "- 🐳 Images retagged:" >> $GITHUB_STEP_SUMMARY
             echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:${VERSION}\`" >> $GITHUB_STEP_SUMMARY
             echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:latest\`" >> $GITHUB_STEP_SUMMARY

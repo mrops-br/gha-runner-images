@@ -67,13 +67,25 @@ runs:
       id: version
       shell: bash
       run: |
-        REF="${{ github.ref }}"
-        if [[ "$REF" =~ refs/heads/release/(.+) ]]; then
+        # For PRs, use head_ref (source branch), for pushes use ref
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          BRANCH="${{ github.head_ref }}"
+        else
+          REF="${{ github.ref }}"
+          BRANCH="${REF#refs/heads/}"
+        fi
+
+        echo "Branch: $BRANCH"
+
+        if [[ "$BRANCH" =~ ^release/(.+) ]]; then
           echo "tag=${BASH_REMATCH[1]}-rc" >> $GITHUB_OUTPUT
-        elif [[ "$REF" =~ refs/heads/hotfix/(.+) ]]; then
+          echo "Extracted version tag: ${BASH_REMATCH[1]}-rc"
+        elif [[ "$BRANCH" =~ ^hotfix/(.+) ]]; then
           echo "tag=${BASH_REMATCH[1]}-hotfix-rc" >> $GITHUB_OUTPUT
+          echo "Extracted version tag: ${BASH_REMATCH[1]}-hotfix-rc"
         else
           echo "tag=" >> $GITHUB_OUTPUT
+          echo "No version tag extracted"
         fi
 
     - name: Extract metadata
@@ -87,12 +99,12 @@ runs:
           # develop → dev-latest, dev-<sha>
           type=raw,value=dev-latest,enable=${{ github.ref == 'refs/heads/develop' }}
           type=raw,value=dev-{{sha}},enable=${{ github.ref == 'refs/heads/develop' }}
-          # release/X.Y.Z → X.Y.Z-rc or hotfix/X.Y.Z → X.Y.Z-hotfix-rc
+          # release/X.Y.Z → X.Y.Z-rc or hotfix/X.Y.Z → X.Y.Z-hotfix-rc (from branch or PR)
           type=raw,value=${{ steps.version.outputs.tag }},enable=${{ steps.version.outputs.tag != '' }}
           # Always add short SHA for all branches
           type=sha,prefix=,format=short
-          # PR builds → pr-<number>
-          type=ref,event=pr,prefix=pr-
+          # PR builds to develop (not release/hotfix) → pr-<number>
+          type=ref,event=pr,prefix=pr-,enable=${{ steps.version.outputs.tag == '' }}
 
     - name: Build and push
       id: build

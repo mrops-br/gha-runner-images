@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - develop
-      - 'release/**'
-      - 'hotfix/**'
     paths:
       - 'images/base/**'
       - '.github/workflows/build-base.yaml'
@@ -84,11 +82,25 @@ jobs:
       - name: Determine if push is needed
         id: should-push
         run: |
-          # Push on main, develop, release/*, hotfix/* branches (not PRs)
+          # Push on:
+          # - develop branch pushes
+          # - PRs to main from release/* or hotfix/* branches (build RC images)
+          # Don't push on:
+          # - PRs to develop (just validate)
+
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "push=false" >> $GITHUB_OUTPUT
+            # Check if PR is targeting main and source is release/* or hotfix/*
+            if [[ "${{ github.base_ref }}" == "main" ]] && [[ "${{ github.head_ref }}" =~ ^(release|hotfix)/ ]]; then
+              echo "push=true" >> $GITHUB_OUTPUT
+              echo "✅ PR to main from ${{ github.head_ref }} - will build and push RC image"
+            else
+              echo "push=false" >> $GITHUB_OUTPUT
+              echo "ℹ️ PR validation only - will not push image"
+            fi
           else
+            # Push events on develop
             echo "push=true" >> $GITHUB_OUTPUT
+            echo "✅ Push to ${{ github.ref_name }} - will build and push image"
           fi
 
       - name: Build and push Docker image

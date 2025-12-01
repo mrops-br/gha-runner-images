@@ -24,6 +24,9 @@ inputs:
     default: ''
 
 outputs:
+  digest:
+    description: 'Image digest'
+    value: ${{ steps.crane-tag.outputs.digest }}
   image-ref:
     description: 'Full image reference with digest'
     value: ${{ steps.crane-tag.outputs.image-ref }}
