@@ -1,0 +1,188 @@
+name: Release
+
+on:
+  # Trigger on push to main (retag only, no rebuild)
+  push:
+    branches:
+      - main
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: 'Source RC tag (e.g., 1.0.0-rc or 1.0.0-hotfix-rc)'
+        required: true
+        type: string
+      version:
+        description: 'Final version (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # Extract version from the latest commit message on main
+  extract-version:
+    name: Extract Version
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      source_tag: ${{ steps.version.outputs.source_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 10
+
+      - name: Extract version from merge commit
+        id: version
+        run: |
+          # Look for merge commit from release/X.Y.Z or hotfix/X.Y.Z
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+
+          # Try to extract from "Merge branch 'release/X.Y.Z'" or "Merge pull request ... from .../release/X.Y.Z"
+          if [[ "$COMMIT_MSG" =~ release/([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            SOURCE_TAG="${VERSION}-rc"
+            echo "Detected release version: $VERSION (source: $SOURCE_TAG)"
+          elif [[ "$COMMIT_MSG" =~ hotfix/([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            SOURCE_TAG="${VERSION}-hotfix-rc"
+            echo "Detected hotfix version: $VERSION (source: $SOURCE_TAG)"
+          else
+            echo "❌ Could not extract version from commit message"
+            echo "This workflow should only run when merging release/* or hotfix/* to main"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "source_tag=$SOURCE_TAG" >> $GITHUB_OUTPUT
+
+  update-changelog:
+    name: Update Changelog
+    runs-on: ubuntu-latest
+    needs: extract-version
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Need full history for git-cliff
+
+      - name: Generate changelog with git-cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --verbose --tag v${{ needs.extract-version.outputs.version }}
+        env:
+          OUTPUT: CHANGELOG.md
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit and push changelog
+        run: |
+          VERSION="${{ needs.extract-version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add CHANGELOG.md
+
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "ℹ️ No changes to CHANGELOG.md"
+          else
+            git commit -m "docs: update CHANGELOG.md for v${VERSION}"
+            git push origin main
+            echo "✅ Updated CHANGELOG.md for v${VERSION}"
+          fi
+
+  retag-base:
+    name: Retag Base Image
+    needs: extract-version
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/build-base.yaml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    secrets: inherit
+    with:
+      mode: retag
+      source_tag: ${{ github.event_name == 'push' && needs.extract-version.outputs.source_tag || inputs.source_tag }}
+      version: ${{ github.event_name == 'push' && needs.extract-version.outputs.version || inputs.version }}
+
+  # Add more image retags here as you create them
+  # retag-nodejs:
+  #   name: Retag Node.js Image
+  #   needs: [extract-version, retag-base]
+  #   uses: ./.github/workflows/build-nodejs.yaml
+  #   permissions:
+  #     contents: read
+  #     packages: write
+  #     id-token: write
+  #   secrets: inherit
+  #   with:
+  #     mode: retag
+  #     source_tag: ${{ github.event_name == 'push' && needs.extract-version.outputs.source_tag || inputs.source_tag }}
+  #     version: ${{ github.event_name == 'push' && needs.extract-version.outputs.version || inputs.version }}
+
+  create-git-tag:
+    name: Create Git Tag
+    runs-on: ubuntu-latest
+    needs: [extract-version, retag-base]
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Create and push tag
+        run: |
+          VERSION="${{ needs.extract-version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "Release version ${VERSION}"
+          git push origin "v${VERSION}"
+          echo "✅ Created and pushed tag: v${VERSION}"
+
+  summary:
+    name: Summary
+    runs-on: ubuntu-latest
+    needs: [update-changelog, retag-base, create-git-tag]
+    if: always() && github.event_name == 'push'
+    steps:
+      - name: Generate summary
+        run: |
+          VERSION="${{ needs.extract-version.outputs.version }}"
+          SOURCE_TAG="${{ needs.extract-version.outputs.source_tag }}"
+
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** $VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "**Source Tag:** $SOURCE_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Task | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Changelog Update | ${{ needs.update-changelog.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Retag runner-base | ${{ needs.retag-base.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Create Git Tag | ${{ needs.create-git-tag.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.update-changelog.result }}" == "success" && "${{ needs.retag-base.result }}" == "success" && "${{ needs.create-git-tag.result }}" == "success" ]]; then
+            echo "✅ Release v${VERSION} completed successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Released Artifacts:" >> $GITHUB_STEP_SUMMARY
+            echo "- 📝 CHANGELOG.md updated" >> $GITHUB_STEP_SUMMARY
+            echo "- 🏷️ Git tag: \`v${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- 🐳 Images retagged:" >> $GITHUB_STEP_SUMMARY
+            echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:${VERSION}\`" >> $GITHUB_STEP_SUMMARY
+            echo "  - \`${{ env.REGISTRY }}/${{ github.repository_owner }}/runner-base:latest\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Release failed. Please check the logs above." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
