@@ -3,7 +3,7 @@
 
 FROM ubuntu:24.04
 
-LABEL org.opencontainers.image.source="https://github.com/YOUR_ORG/github-actions-runner-images"
+LABEL org.opencontainers.image.source="https://github.com/mrops-br/github-actions-runner-images"
 LABEL org.opencontainers.image.description="Base image for GitHub Actions pipelines"
 LABEL org.opencontainers.image.licenses="MIT"
 
