@@ -1,0 +1,61 @@
+name: Runner Images CI/CD
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/**'
+      - 'hotfix/**'
+    paths:
+      - 'images/**'
+      - '.github/workflows/**'
+      - '.github/actions/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'images/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build even without changes'
+        type: boolean
+        default: false
+
+jobs:
+  # Use the container pipeline orchestrator
+  pipeline:
+    uses: mrops-br/gha-workflows/.github/workflows/_pipeline-container.yaml@main
+    permissions:
+      contents: write       # For creating tags and releases
+      packages: write       # For pushing to GHCR
+      id-token: write       # For cosign signing
+      security-events: write  # For vulnerability scanning
+    secrets: inherit
+    with:
+      # Image configuration
+      image-name: ${{ github.repository_owner }}/runner-base
+      registry: ghcr.io
+      context: ./images/base
+      dockerfile: ./images/base/Dockerfile
+      platforms: linux/amd64
+
+      # CI options
+      enable-lint-dockerfile: true
+      dockerfile-failure-threshold: warning
+
+      # Security
+      enable-signing: true
+      enable-scanning: true
+      scan-severity: 'CRITICAL,HIGH'
+
+      # Release automation (on merge to main)
+      enable-auto-release: true
+      enable-changelog: true
+      changelog-config: cliff.toml
+
+      # Runners
+      lint-runner: 'ubuntu-latest'  # Fast, no circular dependency
+      build-runner: 'shared-runners'  # Self-hosted with buildkit
