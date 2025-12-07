@@ -1,4 +1,4 @@
-name: Runner Images CI/CD
+name: Runner Images
 on:
   push:
     branches:
@@ -27,6 +27,7 @@ on:
 jobs:
   # Use the container pipeline orchestrator
   pipeline:
+    name: CI/CD pipeline
     uses: mrops-br/gha-workflows/.github/workflows/_pipeline-container.yaml@main
     permissions:
       contents: write       # For creating tags and releases
