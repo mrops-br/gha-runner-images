@@ -1,69 +1,53 @@
-name: Cleanup Old Images
+name: Cleanup Container Images
 
 on:
   schedule:
     # Run weekly on Sunday at 2 AM UTC
     - cron: '0 2 * * 0'
   workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Dry run (preview what would be deleted)'
+        required: false
+        type: boolean
+        default: false
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/runner-base
+# Prevent duplicate runs: cancel in-progress runs when new commits are pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   cleanup:
-    name: Cleanup Old Images
-    runs-on: ubuntu-latest
+    name: Cleanup Images
+    uses: mrops-br/gha-workflows/.github/workflows/_cleanup-images.yaml@main
     permissions:
       packages: write
       contents: read
+    with:
+      # Image configuration
+      image-name: runner-base  # Change to your image name
 
-    steps:
-      - name: Cleanup old images
-        uses: actions/delete-package-versions@v5
-        with:
-          package-name: 'runner-base'
-          package-type: 'container'
-          min-versions-to-keep: 10
-          delete-only-untagged-versions: false
-          ignore-versions: '^(latest|0|0\\.2|0\\.2\\..*)$'  # Keep stable tags
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # Retention: Keep at least 15 versions total
+      min-versions-to-keep: 15
 
-      - name: Cleanup RC images older than 30 days
-        uses: actions/delete-package-versions@v5
-        with:
-          package-name: 'runner-base'
-          package-type: 'container'
-          min-versions-to-keep: 3
-          oldest-to-keep: 30  # days
-          version-pattern: '.*-rc$'  # Only delete RC tags
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # Delete all old versions except protected ones
+      num-old-versions-to-delete: 0  # 0 means delete all old versions
 
-      - name: Cleanup hotfix RC images older than 30 days
-        uses: actions/delete-package-versions@v5
-        with:
-          package-name: 'runner-base'
-          package-type: 'container'
-          min-versions-to-keep: 3
-          oldest-to-keep: 30  # days
-          version-pattern: '.*-hotfix-rc$'
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # Protection: Which versions to NEVER delete
+      protect-semver: true        # Protect: latest, 1, 1.2, 1.2.3
+      protect-rc: false           # Don't protect: 1.2.3-rc (allow cleanup)
+      protect-hotfix-rc: false    # Don't protect: 1.2.3-hotfix-rc (allow cleanup)
+      protect-dev-latest: true    # Protect: dev-latest
 
-      - name: Cleanup dev images older than 14 days
-        uses: actions/delete-package-versions@v5
-        with:
-          package-name: 'runner-base'
-          package-type: 'container'
-          min-versions-to-keep: 5
-          oldest-to-keep: 14  # days
-          version-pattern: '^dev-.*$'
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # Also protect dev-* and pr-* tags with custom pattern
+      # This protects recent dev and PR builds
+      custom-ignore-pattern: '^(dev-[0-9a-f]{7}|pr-[0-9]+)$'
 
-      - name: Cleanup untagged images
-        uses: actions/delete-package-versions@v5
-        with:
-          package-name: 'runner-base'
-          package-type: 'container'
-          min-versions-to-keep: 0
-          delete-only-untagged-versions: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # Cleanup untagged images aggressively
+      delete-untagged: true
+      untagged-min-versions: 0
+
+      # Dry run mode (from workflow_dispatch input)
+      dry-run: ${{ github.event.inputs.dry-run == 'true' }}
+
