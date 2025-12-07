@@ -12,6 +12,11 @@ on:
         type: boolean
         default: false
 
+# Prevent duplicate runs: cancel in-progress runs when new commits are pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   cleanup:
     name: Cleanup Images
