@@ -115,21 +115,6 @@ jobs:
       source_tag: ${{ github.event_name == 'push' && needs.extract-version.outputs.source_tag || inputs.source_tag }}
       version: ${{ github.event_name == 'push' && needs.extract-version.outputs.version || inputs.version }}
 
-  # Add more image retags here as you create them
-  # retag-nodejs:
-  #   name: Retag Node.js Image
-  #   needs: [extract-version, retag-base]
-  #   uses: ./.github/workflows/build-nodejs.yaml
-  #   permissions:
-  #     contents: read
-  #     packages: write
-  #     id-token: write
-  #   secrets: inherit
-  #   with:
-  #     mode: retag
-  #     source_tag: ${{ github.event_name == 'push' && needs.extract-version.outputs.source_tag || inputs.source_tag }}
-  #     version: ${{ github.event_name == 'push' && needs.extract-version.outputs.version || inputs.version }}
-
   create-git-tag:
     name: Create Git Tag
     runs-on: ubuntu-latest
