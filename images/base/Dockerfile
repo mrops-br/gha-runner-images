@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Tool versions
 ARG YQ_VERSION=v4.44.1
-ARG ARGOCD_VERSION=v2.11.2
+ARG ARGOCD_VERSION=v3.2.0
 ARG GH_VERSION=2.50.0
 ARG COSIGN_VERSION=v2.2.4
 ARG TRIVY_VERSION=0.52.0
