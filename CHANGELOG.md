@@ -5,19 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2025-12-28
+
+### 💼 Other
+- Merge branch 'main' into develop [skip ci] by @melquiadesrodrigues- Merge pull request #28 from mrops-br/release/0.2.8
+### 🐛 Fixed
+- **base:** Readd kustomize to base image by @melquiadesrodrigues
+
+### New Contributors
+* @melquiadesrodrigues made their first contribution
+
 ## [0.2.7] - 2025-12-07
 
 ### 🚜 Changed
-- Update CHANGELOG.md for v0.2.6 by @github-actions[bot]- Changing workflows to reusable workflows
+- Update CHANGELOG.md for v0.2.6 by @github-actions[bot]- Changing workflows to reusable workflows by @melquiadesrodrigues in [#22](https://github.com/mrops-br/gha-runner-images/pull/22)- Changing workflows to reusable workflows by @melquiadesrodrigues in [#23](https://github.com/mrops-br/gha-runner-images/pull/23)- Update CHANGELOG.md for v0.2.7 [skip ci] by @github-actions[bot]
 ### ⚙️ Miscellaneous
-- Prevent concurrency builds- Prevent concurrency builds- Prevent concurrency builds
+- Prevent concurrency builds by @melquiadesrodrigues in [#25](https://github.com/mrops-br/gha-runner-images/pull/25)- Prevent concurrency builds by @melquiadesrodrigues in [#26](https://github.com/mrops-br/gha-runner-images/pull/26)- Prevent concurrency builds by @melquiadesrodrigues
 ### 💼 Other
-- Merge pull request #27 from mrops-br/release/0.2.7
+- Merge pull request #27 from mrops-br/release/0.2.7 by @melquiadesrodrigues in [#27](https://github.com/mrops-br/gha-runner-images/pull/27)
 ### 🐛 Fixed
-- **base:** Correct docker labels
-
-### New Contributors
-* @github-actions[bot] made their first contribution
+- **base:** Correct docker labels by @melquiadesrodrigues in [#21](https://github.com/mrops-br/gha-runner-images/pull/21)
+- **base:** Correct docker labels by @melquiadesrodrigues
 
 ## [0.2.6] - 2025-12-01
 
@@ -74,6 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * @melquiadesrodrigues made their first contribution in [#5](https://github.com/mrops-br/gha-runner-images/pull/5)
 * @dependabot[bot] made their first contribution
 
+[0.2.8]: https://github.com/mrops-br/gha-runner-images/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/mrops-br/gha-runner-images/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/mrops-br/gha-runner-images/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/mrops-br/gha-runner-images/compare/v0.2.3...v0.2.5
