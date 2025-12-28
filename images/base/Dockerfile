@@ -1,6 +1,6 @@
 # Base image for GitHub Actions pipelines
 # Multi-stage build for optimized size - ArgoCD-centric workflow
-# Removed: kubectl, helm, kustomize (ArgoCD handles deployments)
+# Removed: kubectl and helm (ArgoCD handles deployments)
 
 # ============================================
 # Stage 1: Download all tools
@@ -34,6 +34,13 @@ RUN mkdir -p /downloads
 # Download yq
 RUN curl -sSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
     -o /downloads/yq && chmod +x /downloads/yq
+
+# Download kustomize
+ARG KUSTOMIZE_VERSION=v5.4.1
+RUN curl -sSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+    | tar xz -C /tmp \
+    && mv /tmp/kustomize /downloads/kustomize \
+    && chmod +x /downloads/kustomize
 
 # Download ArgoCD CLI
 RUN curl -sSL "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-amd64" \
@@ -120,6 +127,7 @@ RUN echo "Verifying installations..." \
     && git --version \
     && jq --version \
     && yq --version \
+    && kustomize version \
     && argocd version --client \
     && gh --version \
     && cosign version \
