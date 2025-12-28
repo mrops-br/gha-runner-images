@@ -5,15 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.8] - 2025-12-28
+## [0.2.9] - 2025-12-28
 
 ### 💼 Other
-- Merge branch 'main' into develop [skip ci] by @melquiadesrodrigues- Merge pull request #28 from mrops-br/release/0.2.8
-### 🐛 Fixed
-- **base:** Readd kustomize to base image by @melquiadesrodrigues
-
+- Merge branch 'develop' of github.com:mrops-br/gha-runner-images into develop by @melquiadesrodrigues- Merge pull request #29 from mrops-br/release/0.2.9
 ### New Contributors
 * @melquiadesrodrigues made their first contribution
+
+## [0.2.8] - 2025-12-28
+
+### 🚜 Changed
+- **base:** Update argocd to 3.2.0 by @melquiadesrodrigues
+- Update CHANGELOG.md for v0.2.8 [skip ci] by @github-actions[bot]
+### 💼 Other
+- Merge branch 'main' into develop [skip ci] by @melquiadesrodrigues- Merge pull request #28 from mrops-br/release/0.2.8 by @melquiadesrodrigues in [#28](https://github.com/mrops-br/gha-runner-images/pull/28)
+### 🐛 Fixed
+- **base:** Readd kustomize to base image by @melquiadesrodrigues
 
 ## [0.2.7] - 2025-12-07
 
@@ -82,6 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * @melquiadesrodrigues made their first contribution in [#5](https://github.com/mrops-br/gha-runner-images/pull/5)
 * @dependabot[bot] made their first contribution
 
+[0.2.9]: https://github.com/mrops-br/gha-runner-images/compare/v0.2.8...v0.2.9
 [0.2.8]: https://github.com/mrops-br/gha-runner-images/compare/v0.2.7...v0.2.8
 [0.2.7]: https://github.com/mrops-br/gha-runner-images/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/mrops-br/gha-runner-images/compare/v0.2.5...v0.2.6
